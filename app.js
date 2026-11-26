@@ -12,6 +12,82 @@
   let lastNavRect = null;
   let lastMobileNavRect = null;
 
+  /* ===== AUTO LOGOUT 5 MENIT IDLE / TUTUP BROWSER ===== */
+  const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 menit
+  const LAST_ACTIVE_KEY = 'saku_last_active';
+  let idleTimer = null;
+
+  async function forceSessionExpired() {
+    clearTimeout(idleTimer);
+    localStorage.removeItem(LAST_ACTIVE_KEY);
+    await supabase.auth.signOut();
+    lastNavRect = null;
+    lastMobileNavRect = null;
+    window.location.hash = '#login';
+    setTimeout(() => {
+      showToast('Sesi berakhir setelah 5 menit tidak aktif. Silakan login ulang.', 'error');
+    }, 150);
+  }
+
+  function recordActivity() {
+    const hash = window.location.hash || '#login';
+    if (hash === '#login' || hash === '#register') return;
+
+    const now = Date.now();
+    const prev = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+    if (prev && (now - prev) >= SESSION_TIMEOUT_MS) {
+      forceSessionExpired();
+      return;
+    }
+
+    localStorage.setItem(LAST_ACTIVE_KEY, String(now));
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      forceSessionExpired();
+    }, SESSION_TIMEOUT_MS);
+  }
+
+  ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, recordActivity, { passive: true });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) recordActivity();
+  });
+
+  /* ===== PERSISTENT SHELL RENDERER (AGAR NAVBAR TIDAK DI-RECREATE) ===== */
+  function renderInShell(activeTab, pageHtml, user) {
+    const existingNavbar = $('.top-navbar');
+    const existingWrapper = $('.page-wrapper');
+
+    if (existingNavbar && existingWrapper) {
+      const temp = document.createElement('div');
+      temp.innerHTML = UI.Shell(activeTab, pageHtml, user);
+      const nextWrapper = temp.querySelector('.page-wrapper');
+
+      if (nextWrapper) {
+        existingWrapper.replaceWith(nextWrapper);
+      } else {
+        $('#app').innerHTML = UI.Shell(activeTab, pageHtml, user);
+        syncNavGlassIndicator(false);
+        return;
+      }
+
+      const targetHash = '#' + activeTab;
+      document.querySelectorAll('#navbar-links a[data-nav]').forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === targetHash);
+      });
+      document.querySelectorAll('.mobile-bottom-nav a').forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === targetHash);
+      });
+
+      syncNavGlassIndicator(true);
+    } else {
+      $('#app').innerHTML = UI.Shell(activeTab, pageHtml, user);
+      syncNavGlassIndicator(false);
+    }
+  }
+
   /* ===== CUSTOM LIQUID GLASS SELECT DROPDOWN ===== */
   function initGlassSelects(root = document) {
     root.querySelectorAll('select').forEach(select => {
@@ -90,24 +166,18 @@
   });
 
   function syncNavGlassIndicator(animate = true) {
-    // 1. Desktop & Tablet Top Navbar Pill (GPU translate3d)
+    // 1. Desktop & Tablet Top Navbar Pill
     const container = $('#navbar-links');
     const indicator = $('#nav-glass-indicator');
     const activeLink = container ? container.querySelector('a.active') : null;
     if (container && indicator && activeLink) {
-      const cRect = container.getBoundingClientRect();
-      const aRect = activeLink.getBoundingClientRect();
-      const targetLeft = aRect.left - cRect.left;
-      const targetWidth = aRect.width;
+      const targetLeft = activeLink.offsetLeft;
+      const targetWidth = activeLink.offsetWidth;
 
-      if (animate && lastNavRect) {
+      if (!animate) {
         indicator.style.transition = 'none';
-        indicator.style.transform = `translate3d(${lastNavRect.left}px, 0, 0)`;
-        indicator.style.width = `${lastNavRect.width}px`;
-        indicator.getBoundingClientRect();
-        indicator.style.transition = 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), width 0.36s cubic-bezier(0.22, 1, 0.36, 1)';
       } else {
-        indicator.style.transition = 'none';
+        indicator.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), width 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
       }
 
       indicator.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
@@ -117,11 +187,10 @@
       container.querySelectorAll('a[data-nav]').forEach(link => {
         if (link.dataset.glassBound === '1') return;
         link.dataset.glassBound = '1';
-        link.addEventListener('click', () => {
-          const lRect = link.getBoundingClientRect();
-          const nextLeft = lRect.left - cRect.left;
-          const nextWidth = lRect.width;
-          indicator.style.transition = 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), width 0.36s cubic-bezier(0.22, 1, 0.36, 1)';
+        link.addEventListener('pointerdown', () => {
+          const nextLeft = link.offsetLeft;
+          const nextWidth = link.offsetWidth;
+          indicator.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), width 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
           indicator.style.transform = `translate3d(${nextLeft}px, 0, 0)`;
           indicator.style.width = `${nextWidth}px`;
           lastNavRect = { left: nextLeft, width: nextWidth };
@@ -131,7 +200,7 @@
       });
     }
 
-    // 2. Mobile Bottom Navbar Sliding Pill (GPU translate3d)
+    // 2. Mobile Bottom Navbar Sliding Pill
     const mobileNav = $('.mobile-bottom-nav');
     if (mobileNav) {
       let mIndicator = mobileNav.querySelector('.mobile-nav-indicator');
@@ -146,14 +215,10 @@
         const targetLeft = activeMobileLink.offsetLeft;
         const targetWidth = activeMobileLink.offsetWidth;
 
-        if (animate && lastMobileNavRect) {
+        if (!animate) {
           mIndicator.style.transition = 'none';
-          mIndicator.style.transform = `translate3d(${lastMobileNavRect.left}px, 0, 0)`;
-          mIndicator.style.width = `${lastMobileNavRect.width}px`;
-          mIndicator.getBoundingClientRect();
-          mIndicator.style.transition = 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), width 0.36s cubic-bezier(0.22, 1, 0.36, 1)';
         } else {
-          mIndicator.style.transition = 'none';
+          mIndicator.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), width 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
         }
 
         mIndicator.style.transform = `translate3d(${targetLeft}px, 0, 0)`;
@@ -164,10 +229,10 @@
       mobileNav.querySelectorAll('a').forEach(link => {
         if (link.dataset.mobileGlassBound === '1') return;
         link.dataset.mobileGlassBound = '1';
-        link.addEventListener('click', () => {
+        link.addEventListener('pointerdown', () => {
           const nextLeft = link.offsetLeft;
           const nextWidth = link.offsetWidth;
-          mIndicator.style.transition = 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), width 0.36s cubic-bezier(0.22, 1, 0.36, 1)';
+          mIndicator.style.transition = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), width 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
           mIndicator.style.transform = `translate3d(${nextLeft}px, 0, 0)`;
           mIndicator.style.width = `${nextWidth}px`;
           lastMobileNavRect = { left: nextLeft, width: nextWidth };
@@ -358,7 +423,17 @@
 
   async function getUser() {
     const { data: { session } } = await supabase.auth.getSession();
-    return session ? session.user : null;
+    if (!session) return null;
+
+    const lastActive = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+    if (lastActive && (Date.now() - lastActive) >= SESSION_TIMEOUT_MS) {
+      localStorage.removeItem(LAST_ACTIVE_KEY);
+      await supabase.auth.signOut();
+      return null;
+    }
+
+    recordActivity();
+    return session.user;
   }
 
   async function render() {
@@ -375,6 +450,7 @@
     const user = await getUser();
 
     if (!user) {
+      clearTimeout(idleTimer);
       lastNavRect = null;
       lastMobileNavRect = null;
       if (hash === '#register') attachRegisterEvents();
@@ -388,8 +464,7 @@
     else if (hash.startsWith('#refleksi')) await loadRefleksi(user);
     else if (hash.startsWith('#investasi')) await loadInvestasi(user);
     else if (hash.startsWith('#onboarding')) {
-      $('#app').innerHTML = UI.Shell('dashboard', UI.Onboarding(user), user);
-      syncNavGlassIndicator(true);
+      renderInShell('dashboard', UI.Onboarding(user), user);
       attachProfileEvents(user);
     } else {
       window.location.hash = '#dashboard';
@@ -417,6 +492,7 @@
         btn.disabled = false;
         return;
       }
+      localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       window.location.hash = '#dashboard';
     });
 
@@ -501,6 +577,7 @@
       }
 
       close();
+      localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       showToast('Kata sandi berhasil diubah! Selamat datang kembali.', 'success');
       window.location.hash = '#dashboard';
     });
@@ -567,6 +644,7 @@
         return;
       }
 
+      localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       showToast('Email terverifikasi! Selamat datang di Saku.', 'success');
       window.location.hash = '#onboarding';
     });
@@ -678,8 +756,7 @@
     c.monthsWithInvest = (c.gap <= 0) ? 0 : (c.monthlyEmergWithInvest > 0 ? Math.ceil(c.gap / c.monthlyEmergWithInvest) : null);
     c.months = c.monthsNoInvest;
 
-    $('#app').innerHTML = UI.Shell('dashboard', UI.Dashboard(c, profile, txSummary, hideBalances), user);
-    syncNavGlassIndicator(true);
+    renderInShell('dashboard', UI.Dashboard(c, profile, txSummary, hideBalances), user);
     attachProfileEvents(user);
     renderCashflowChart(c);
     applyPrivacyState();
@@ -852,8 +929,7 @@
     const periodBudget = Math.round(monthlyExpenses * budgetFactor);
     const filterInfo = { periodType, filterValue: activeValue, periodLabel };
 
-    $('#app').innerHTML = UI.Shell('transaksi', UI.Transaksi(txs || [], filterInfo, periodBudget), user);
-    syncNavGlassIndicator(true);
+    renderInShell('transaksi', UI.Transaksi(txs || [], filterInfo, periodBudget), user);
     attachProfileEvents(user);
     initGlassSelects();
     applyPrivacyState();
@@ -960,8 +1036,7 @@
   async function loadData(user) {
     const { data: pRaw } = await supabase.from('financial_profiles').select('*').eq('user_id', user.id).single();
     const p = pRaw || { monthly_income: '', income_type: 'fixed', needs_expense: '', wants_expense: '', debt_installment: '', emergency_fund: '', dependents: 0, savings: '', investments: '', other_assets: '', total_debt: '', age: '', plan_investment: '' };
-    $('#app').innerHTML = UI.Shell('data', UI.Data(p), user);
-    syncNavGlassIndicator(true);
+    renderInShell('data', UI.Data(p), user);
     attachProfileEvents(user);
     initGlassSelects();
     
@@ -1025,8 +1100,7 @@
     const { data: p } = await supabase.from('financial_profiles').select('*').eq('user_id', user.id).single();
     if (!p) { window.location.hash = '#onboarding'; return; }
     const c = calculateFinance(p, user);
-    $('#app').innerHTML = UI.Shell('investasi', UI.Investasi(c, p), user);
-    syncNavGlassIndicator(true);
+    renderInShell('investasi', UI.Investasi(c, p), user);
     attachProfileEvents(user);
     applyPrivacyState();
 
@@ -1083,8 +1157,7 @@
     }
 
     const c = calculateFinance(p, user);
-    $('#app').innerHTML = UI.Shell('refleksi', UI.Refleksi(c, notes || []), user);
-    syncNavGlassIndicator(true);
+    renderInShell('refleksi', UI.Refleksi(c, notes || []), user);
     attachProfileEvents(user);
     applyPrivacyState();
 
@@ -1173,6 +1246,8 @@
     });
 
     document.getElementById('btn-confirm-logout').addEventListener('click', async () => {
+      clearTimeout(idleTimer);
+      localStorage.removeItem(LAST_ACTIVE_KEY);
       await supabase.auth.signOut();
       lastNavRect = null;
       lastMobileNavRect = null;
