@@ -508,13 +508,15 @@ input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15)}
   left:0;
   border-radius:999px;
   background:var(--glass-pill-bg);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
   border:1px solid rgba(255, 255, 255, 1);
   box-shadow:var(--glass-pill-shadow);
+  will-change:transform, width;
+  transform:translate3d(0, 0, 0);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
   transition:
-    transform 0.45s cubic-bezier(0.22, 1.15, 0.36, 1),
-    width 0.45s cubic-bezier(0.22, 1.15, 0.36, 1);
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
   z-index:0;
   pointer-events:none;
 }
@@ -529,7 +531,7 @@ input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15)}
   font-size:13.5px;
   font-weight:500;
   color:#46574F;
-  transition:color 0.25s ease, transform 0.2s ease;
+  transition:color 0.2s ease;
   white-space:nowrap;
 }
 .navbar-links a:hover{color:var(--green-dark)}
@@ -570,9 +572,13 @@ input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15)}
   background:var(--glass-pill-bg);
   border:1px solid #fff;
   box-shadow:var(--glass-pill-shadow);
+  will-change:transform, width;
+  transform:translate3d(0, 0, 0);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
   transition:
-    transform 0.45s cubic-bezier(0.22, 1.15, 0.36, 1),
-    width 0.45s cubic-bezier(0.22, 1.15, 0.36, 1);
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
   z-index:0;
   pointer-events:none;
 }
@@ -590,13 +596,13 @@ input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15)}
   color:#46574F;
   padding:7px 4px;
   border-radius:999px;
-  transition:color 0.25s ease, transform 0.25s cubic-bezier(0.22, 1.15, 0.36, 1);
+  transition:color 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .mobile-bottom-nav svg{
   width:18px;
   height:18px;
   stroke-width:2;
-  transition:transform 0.3s cubic-bezier(0.22, 1.15, 0.36, 1);
+  transition:transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 /* Fallback jika .mobile-nav-indicator belum dirender di HTML */
 .mobile-bottom-nav:not(:has(.mobile-nav-indicator)) a.active{
@@ -1703,14 +1709,11 @@ label .hint {
    SMOOTH THEME TRANSITION (LIGHT <-> DARK MODE) - ALL DEVICES
    ========================================================= */
 
-/* 1. Aktifkan transisi halus di seluruh permukaan, kartu, navbar, teks & border */
 html,
 body,
 .top-navbar,
 .navbar-links,
-.nav-glass-indicator,
 .mobile-bottom-nav,
-.mobile-nav-indicator,
 .stat-card,
 .panel,
 .form-section,
@@ -1744,15 +1747,12 @@ input,
 select,
 textarea {
   transition:
-    background-color 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    color 0.38s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.32s cubic-bezier(0.22, 1.15, 0.36, 1) !important;
+    background-color 0.28s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
-/* 2. Animasi rotasi & skala halus pada ikon tombol tema (Bulan <-> Matahari) */
 .theme-toggle-btn svg {
   transition:
     transform 0.5s cubic-bezier(0.22, 1.25, 0.36, 1),
@@ -1767,27 +1767,13 @@ textarea {
   transform: rotate(360deg);
 }
 
-/* 3. Pertahankan kecepatan animasi khusus elemen interaktif (sliding pill & dropdown) */
-.nav-glass-indicator,
-.mobile-nav-indicator {
-  transition:
-    transform 0.45s cubic-bezier(0.22, 1.15, 0.36, 1),
-    width 0.45s cubic-bezier(0.22, 1.15, 0.36, 1),
-    background 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.48s cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-
 .glass-select-menu {
   transition:
     opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
     visibility 0.22s ease,
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.48s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.42s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
-/* 4. Hormati pengaturan aksesibilitas Reduce Motion di HP/Laptop jika user mengaktifkannya */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1801,66 +1787,11 @@ textarea {
    OPTIMASI PERFORMA GPU ANDROID (60FPS+ SMOOTH LIQUID GLASS)
    ========================================================= */
 
-/* 1. Aktifkan akselerasi hardware (GPU compositing layer) untuk indikator geser */
-.nav-glass-indicator,
-.mobile-nav-indicator {
-  will-change: transform, width;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transition:
-    transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.36s cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-
-/* 2. Hapus transisi berat pada box-shadow & backdrop-filter saat ganti tema/scroll */
-html,
-body,
-.top-navbar,
-.mobile-bottom-nav,
-.stat-card,
-.panel,
-.form-section,
-.sidebar-info,
-.method-card,
-.method-recommend-card,
-.onboarding-card,
-.onboarding-step-box,
-.auth-body,
-.auth-container,
-.auth-left,
-.auth-right,
-.user-badge,
-.theme-toggle-btn,
-.privacy-pill,
-.btn,
-.btn-edit-tx,
-.chip-btn,
-.glass-select-trigger,
-.glass-select-menu,
-.tx-row,
-.note-item,
-.alert,
-.modal-box,
-input,
-select,
-textarea {
-  /* Hanya transisikan warna teks, latar solid, dan border agar tidak memaksa re-blur setiap frame */
-  transition:
-    background-color 0.28s ease,
-    color 0.25s ease,
-    border-color 0.25s ease,
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-
-/* 3. Optimasi khusus layar sentuh / Android (pointer: coarse atau layar <= 1024px) */
 @media (hover: none) and (pointer: coarse), (max-width: 1024px) {
-  /* Matikan background-attachment: fixed yang bikin scroll Android lag parah */
   body {
     background-attachment: scroll !important;
   }
 
-  /* Kurangi beban blur berlapis pada kartu konten sambil mempertahankan kilau kaca */
   .stat-card,
   .panel,
   .form-section,
@@ -1902,7 +1833,6 @@ textarea {
     background: rgba(16, 23, 19, 0.90) !important;
   }
 
-  /* Pertahankan blur hanya pada elemen melayang utama dengan radius blur ringan (12px) */
   .top-navbar,
   .mobile-bottom-nav,
   .navbar-links,
@@ -1913,7 +1843,6 @@ textarea {
     transform: translateZ(0);
   }
 
-  /* Hilangkan blur berlapis pada tombol/badge kecil di dalam header */
   .btn,
   .btn-edit-tx,
   .chip-btn,
@@ -1924,4 +1853,27 @@ textarea {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+}
+
+/* =========================================================
+   FIX DROPDOWN GLASS SELECT TERTUTUP KARTU DI BAWAHNYA
+   ========================================================= */
+
+.form-section,
+.panel,
+.stat-card,
+.modal-box {
+  overflow: visible !important;
+  position: relative;
+}
+
+.form-section:has(.glass-select.is-open),
+.panel:has(.glass-select.is-open),
+.stat-card:has(.glass-select.is-open),
+.glass-select.is-open {
+  z-index: 999 !important;
+}
+
+.glass-select-menu {
+  z-index: 1000 !important;
 }
